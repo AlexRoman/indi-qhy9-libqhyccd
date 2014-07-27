@@ -157,7 +157,16 @@ bool QHY9::Disconnect() {
 }
 
 bool QHY9::StartExposure(float duration) {
-    IDLog("%s(%.1f)\n", __FUNCTION__, duration);
+    IDLog("%s(%.1f) frame type = %d\n", __FUNCTION__, duration, PrimaryCCD.getFrameType());
+
+    if (PrimaryCCD.getFrameType() == CCDChip::DARK_FRAME ||
+        PrimaryCCD.getFrameType() == CCDChip::BIAS_FRAME) {
+        IDLog("Setting shutter closed!\n");
+        SetQHYCCDShutter(m_hdl, SHUTTER_CLOSED);
+    } else {
+        IDLog("Setting shutter open!\n");
+        SetQHYCCDShutter(m_hdl, SHUTTER_OPEN);
+    }
 
     int ret = SetQHYCCDParam(m_hdl, CONTROL_EXPOSURE, (int)(duration * 1000000));
     if (ret != QHYCCD_SUCCESS) {
@@ -224,6 +233,10 @@ void QHY9::TimerHit() {
                         w, h, bpp, channels);
                 ExposureComplete(&PrimaryCCD);
             }
+            // Free the shutter
+            IDLog("Freeing shutter\n");
+            SetQHYCCDShutter(m_hdl, SHUTTER_FREE);
+
             m_exposing = false;
             usleep(500);
         }
@@ -300,17 +313,15 @@ bool QHY9::initProperties() {
         return false;
     }
 
-    /* TODO */
-    
-    /* SAMPLE CODE:
     IUFillNumber(&q9CCDSettings[0], "GAIN", "CCD gain (%)", "%d", 1, 100, 1, 14);
     IUFillNumber(&q9CCDSettings[1], "OFFSET", "CCD offset", "%d", 1, 255, 1, 107);
-    IUFillNumberVector(q9CCDSettingsV, q9CCDSettings, NARRAY(q9CCDSettings), getDefaultName(), "QHY9_CCD_SETTINGS", "CCD Settings", "QHY9", IP_RW, 2, IPS_OK);
+    IUFillNumberVector(&q9CCDSettingsV, q9CCDSettings, NARRAY(q9CCDSettings), getDefaultName(), "QHY9_CCD_SETTINGS", "CCD Settings", "QHY9", IP_RW, 2, IPS_OK);
 
     IUFillSwitch(&q9SpeedSwitch[0], "SPEED_LOW", "Low", ISS_ON);
     IUFillSwitch(&q9SpeedSwitch[1], "SPEED_HIGH", "High", ISS_OFF);
-    IUFillSwitchVector(q9SpeedSwitchV, q9SpeedSwitch, NARRAY(q9SpeedSwitch), getDefaultName(), "QHY9_READOUT_SPEED", "Readout speed", "QHY9", IP_RW, ISR_1OFMANY, 2, IPS_OK);
-    */
+    IUFillSwitchVector(&q9SpeedSwitchV, q9SpeedSwitch, NARRAY(q9SpeedSwitch), getDefaultName(), "QHY9_READOUT_SPEED", "Readout speed", "QHY9", IP_RW, ISR_1OFMANY, 2, IPS_OK);
+
+    IDLog("initProperties() done\n");
 
     return true;
 }
@@ -346,39 +357,29 @@ bool QHY9::ISNewSwitch(const char *dev, const char *name, ISState *states, char 
 
     ISwitchVectorProperty *svp = getSwitch(name);
 
-    /* TODO */
-    (void)svp;
-
-    /* SAMPLE CODE
-
     if (0 == strcmp(svp->name, "QHY9_READOUT_SPEED")) {
-        q9SpeedSwitchV->s = IPS_OK;
+        q9SpeedSwitchV.s = IPS_OK;
         IUUpdateSwitch(svp, states, names, n);
 
         saveConfig();
 
+        int speed = -1;
         if (q9SpeedSwitch[0].s == ISS_ON) {
             IDLog("QHY9::%s() - selected readout to LOW SPEED\n", __FUNCTION__);
-            pthread_mutex_lock(&capMutex);
+            SetQHYCCDParam(m_hdl, CONTROL_SPEED, 0.0);
             speed = 0;
-            editpars = 1;
-            pthread_mutex_unlock(&capMutex);
         }
 
         if (q9SpeedSwitch[1].s == ISS_ON) {
             IDLog("QHY9::%s() - selected readout to HIGH SPEED\n", __FUNCTION__);
-            pthread_mutex_lock(&capMutex);
+            SetQHYCCDParam(m_hdl, CONTROL_SPEED, 1.0);
             speed = 1;
-            editpars = 1;
-            pthread_mutex_unlock(&capMutex);
         }
 
         IDSetSwitch(svp, "Selected readout speed %s", speed ? "high" : "low");
 
         return true;
     }
-    
-    */
 
     if (INDI::CCD::ISNewSwitch(dev, name, states, names, n))
         return true;
@@ -394,27 +395,21 @@ bool QHY9::ISNewNumber(const char *dev, const char *name, double values[], char 
 
     INumberVectorProperty *nvp = getNumber(name);
 
-    /* TODO */
-    (void)nvp;
-
-    /* SAMPLE CODE
+    int gain = 0, offset = 0;
     if (strcmp(nvp->name, "QHY9_CCD_SETTINGS") == 0) {
-        pthread_mutex_lock(&capMutex);
         for (int i = 0; i < n; ++i) {
             if (strcmp(names[i], "GAIN") == 0) {
-                gain = (int)values[i];
-                editpars = 1;
+                gain = values[i];
+                SetQHYCCDParam(m_hdl, CONTROL_GAIN, values[i]);
             } else if (strcmp(names[i], "OFFSET") == 0) {
-                offset = (int)values[i];
-                editpars = 1;
+                offset = values[i];
+                SetQHYCCDParam(m_hdl, CONTROL_OFFSET, values[i]);
             }
 
             IDLog("%s: Set '%s' to %.1f\n", __FUNCTION__, names[i], values[i]);
         }
-        pthread_mutex_unlock(&capMutex);
         IDSetNumber(nvp, "Set GAIN to %d%% and OFFSET to %d", gain, offset);
     }
-    */
 
     if (INDI::CCD::ISNewNumber(dev, name, values, names, n))
         return true;

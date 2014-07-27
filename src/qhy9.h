@@ -37,10 +37,10 @@ public:
     int SetTemperature(double temperature);
 
 private:
-    INumberVectorProperty *q9CCDSettingsV;
+    INumberVectorProperty q9CCDSettingsV;
     INumber q9CCDSettings[2];
 
-    ISwitchVectorProperty *q9SpeedSwitchV;
+    ISwitchVectorProperty q9SpeedSwitchV;
     ISwitch q9SpeedSwitch[2];
 
     int m_timerId;
