@@ -50,4 +50,3 @@ private:
     struct timeval ts_exposure_start;
     float currentExposureLength;
 };
-

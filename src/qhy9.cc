@@ -365,18 +365,18 @@ bool QHY9::ISNewSwitch(const char *dev, const char *name, ISState *states, char 
 
         int speed = -1;
         if (q9SpeedSwitch[0].s == ISS_ON) {
-            IDLog("QHY9::%s() - selected readout to LOW SPEED\n", __FUNCTION__);
+            IDLog("QHY9::%s() - LOW SPEED readout\n", __FUNCTION__);
             SetQHYCCDParam(m_hdl, CONTROL_SPEED, 0.0);
             speed = 0;
         }
 
         if (q9SpeedSwitch[1].s == ISS_ON) {
-            IDLog("QHY9::%s() - selected readout to HIGH SPEED\n", __FUNCTION__);
+            IDLog("QHY9::%s() - HIGH SPEED readout\n", __FUNCTION__);
             SetQHYCCDParam(m_hdl, CONTROL_SPEED, 1.0);
             speed = 1;
         }
 
-        IDSetSwitch(svp, "Selected readout speed %s", speed ? "high" : "low");
+        IDSetSwitch(svp, "Readout speed is now %s", speed ? "HIGH" : "LOW");
 
         return true;
     }
@@ -483,4 +483,3 @@ void ISSnoopDevice(XMLEle *root) {
     ccd_ptr_init();
     INDI_UNUSED(root);
 }
-
